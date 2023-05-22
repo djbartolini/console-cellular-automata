@@ -3,104 +3,80 @@
 #include <thread>
 #include <chrono>
 
-// Size of the grid
-const int GRID_WIDTH = 100;
-const int GRID_HEIGHT = 30;
 
-// Number of generations
-const int NUM_GENERATIONS = 500;
-
-// Probability of a dead cell becoming alive during reproduction
-constexpr double REPRODUCTION_PROBABILITY = 0.2;
-
-// Function to update the grid based on the rules of the cellular automaton
-void updateGrid(std::vector<std::vector<char>> &grid)
-{
-  std::vector<std::vector<char>> newGrid = grid;
-
-  for (int y = 1; y < GRID_HEIGHT - 1; ++y)
-  {
-    for (int x = 1; x < GRID_WIDTH - 1; ++x)
-    {
-      // Get the count of live neighbors
-      int liveNeighbors = 0;
-      for (int i = -1; i <= 1; ++i)
-      {
-        for (int j = -1; j <= 1; ++j)
-        {
-          liveNeighbors += (grid[y + i][x + j] == '#');
+// Function to print the current state of the grid
+void printGrid(const std::vector<std::vector<int>>& grid) {
+    for (const auto& row : grid) {
+        for (int cell : row) {
+            std::cout << (cell ? "#" : " ") << " ";
         }
-      }
-
-      // Apply the rules of the cellular automaton
-      if (grid[y][x] == '#')
-      {
-        // Cell is alive
-        --liveNeighbors; // Exclude the cell itself from the count
-        if (liveNeighbors < 2 || liveNeighbors > 3)
-        {
-          // Cell dies due to underpopulation or overpopulation
-          newGrid[y][x] = ' ';
-        }
-      }
-      else
-      {
-        // Cell is dead
-        if (liveNeighbors == 3 || (liveNeighbors == 2 && (rand() / double(RAND_MAX) < REPRODUCTION_PROBABILITY)))
-        {
-          // Cell becomes alive due to reproduction
-          newGrid[y][x] = '#';
-        }
-      }
+        std::cout << std::endl;
     }
-  }
-
-  // Update the grid
-  grid = std::move(newGrid);
+    std::cout << std::endl;
 }
 
-// Function to draw the grid on the console
-void drawGrid(const std::vector<std::vector<char>> &grid)
-{
-  for (const auto &row : grid)
-  {
-    for (char cell : row)
-    {
-      std::cout << cell;
+// Function to simulate one generation of the game
+void simulateGeneration(std::vector<std::vector<int>>& grid) {
+    int rows = grid.size();
+    int cols = grid[0].size();
+    std::vector<std::vector<int>> newGrid(rows, std::vector<int>(cols, 0));
+
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            int liveNeighbors = 0;
+
+            // Count the live neighbors of each cell
+            for (int x = -1; x <= 1; ++x) {
+                for (int y = -1; y <= 1; ++y) {
+                    if (x == 0 && y == 0) continue;
+                    int ni = (i + x + rows) % rows;
+                    int nj = (j + y + cols) % cols;
+                    liveNeighbors += grid[ni][nj];
+                }
+            }
+
+            // Apply the rules of the game
+            if (grid[i][j]) {
+                if (liveNeighbors < 2 || liveNeighbors > 3)
+                    newGrid[i][j] = 0; // Cell dies due to underpopulation/overpopulation
+                else
+                    newGrid[i][j] = 1; // Cell survives to the next generation
+            } else {
+                if (liveNeighbors == 3)
+                    newGrid[i][j] = 1; // Cell becomes alive due to reproduction
+                else
+                    newGrid[i][j] = 0; // Cell remains dead
+            }
+        }
     }
-    std::cout << '\n';
-  }
+
+    // Update the original grid with the new generation
+    grid = newGrid;
 }
 
-int main()
-{
-  // Initialize the grid
-  std::vector<std::vector<char>> grid(GRID_HEIGHT, std::vector<char>(GRID_WIDTH, ' '));
 
-  // Set the initial seed pattern (glider)
-  grid[1][3] = '#';
-  grid[2][1] = '#';
-  grid[2][3] = '#';
-  grid[3][2] = '#';
-  grid[3][3] = '#';
+int main() {
+  int rows = 72;
+  int cols = 280;
 
-  // Main loop
-  for (int generation = 0; generation < NUM_GENERATIONS; ++generation)
-  {
-    // Clear the console
-    std::cout << "\033[2J\033[1;1H";
+    // Define the initial grid
+    std::vector<std::vector<int>> grid(rows, std::vector<int>(cols, 0));
 
-    // Draw the grid
-    drawGrid(grid);
+    int numAliveCells = rows * cols * 0.1;
 
-    // Update the grid
-    updateGrid(grid);
+    for (int i = 0; i < numAliveCells; ++i) {
+      int randomRow = rand() % rows;
+      int randomCol = rand() % cols;
+      grid[randomRow][randomCol] = 1;
+    }
 
-    // Sleep for a short time (optional)
-    // This gives a visual delay between generations
-    // You may need to include <thread> and <chrono> headers for this to work
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
+    // Simulate and print each generation
+    for (int generation = 1; generation <= 2500; ++generation) {
+        std::cout << "Generation " << generation << ":" << std::endl;
+        printGrid(grid);
+        simulateGeneration(grid);
+        std::this_thread::sleep_for(std::chrono::milliseconds(75));
+    }
 
-  return 0;
+    return 0;
 }
